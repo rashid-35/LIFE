@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIFE</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<section id="intro">
+
+    <div class="intro">
+
+        <div class="logo">LIFE</div>
+
+        <div class="tagline">
+            A 30-day life simulator.
+        </div>
+
+        <div class="game-description">
+            <strong>How to play</strong>
+            <p>Get through 30 days while managing your health, energy, hunger, hydration, money, studies, work, and relationships.</p>
+            <p>Choose where to go and what to do. Your choices affect how the month ends.</p>
+        </div>
+
+        <div class="form">
+
+            <div class="field">
+                <label for="name">What should people call you?</label>
+            <input id="name" placeholder="Enter name">
+            </div>
+
+            <div class="field">
+                <label for="country">Starting Country</label>
+
+                <select id="country">
+                    <option>United Arab Emirates</option>
+                    <option>Afghanistan</option>
+                    <option>Pakistan</option>
+                    <option>India</option>
+                    <option>Spain</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="age">Age</label>
+            <input id="age" type="number" value="17" min="16" max="80">
+            </div>
+
+            <div class="field">
+                <label for="personality">Personality</label>
+
+                <select id="personality">
+                    <option value="balanced">Balanced</option>
+                    <option value="social">Social</option>
+                    <option value="academic">Academic</option>
+                    <option value="ambitious">Ambitious</option>
+                    <option value="calm">Calm</option>
+                </select>
+            </div>
+
+        </div>
+
+        <button class="primary" onclick="startGame()">
+            START LIFE
+        </button>
+
+        <button id="continueButton" class="secondary hidden" onclick="continueGame()">
+            CONTINUE LIFE
+        </button>
+
+        <div class="intro-note">
+            You start with AED 100, a few groceries, and 30 days ahead.
+        </div>
+
+    </div>
+
+</section>
+
+<section id="game" class="hidden">
+
+    <header class="topbar">
+
+        <div class="topbar-inner">
+
+            <div class="brand">
+                LIFE
+            </div>
+
+            <div class="act" id="act">
+                ACT I • SCHOOL
+            </div>
+
+            <div class="day">
+
+                <small>DAY</small>
+
+                <strong id="day">
+                    1 / 30
+                </strong>
+
+            </div>
+
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+
+            <div class="panel">
+
+                <div class="title">
+                    Character
+                </div>
+
+                <div id="playerName" class="character-name"></div>
+
+                <div id="playerCountry" class="country-name"></div>
+
+                <div class="money" id="cash">
+                    $100
+                </div>
+
+                <div class="debt" id="debt">
+                    Debt: $0 / $500
+                </div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="title">
+                    Stats
+                </div>
+
+                <div id="stats"></div>
+
+                <div id="needsWarning" class="needs-warning hidden"></div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="title">
+                    Controls
+                </div>
+
+                <button class="tab" onclick="phone()">
+                    📱 Phone
+                </button>
+
+                <button class="tab" onclick="historyModal()">
+                    📜 History
+                </button>
+
+                <button class="tab" onclick="friendsModal()">
+                    👥 Friends
+                </button>
+
+                <button class="tab" onclick="memoriesModal()">
+                    ✨ Memories
+                </button>
+
+                <button class="tab" onclick="skipDay()">
+                    ⏭ Skip Day
+                </button>
+
+            </div>
+
+        </aside>
+
+        <main>
+
+            <div class="location">
+
+                <h1 id="locationTitle">
+                    🏠 Home
+                </h1>
+
+                <p id="locationDesc">
+                    Rest, eat, drink, shower, use your phone and watch TV.
+                </p>
+
+                <div class="clock">
+
+                    <div class="time" id="time">
+                        7:30 AM
+                    </div>
+
+                    <div id="weather" class="weather">☀️ Clear</div>
+
+                    <div class="timebar">
+                        <div id="timeFill"></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="tabs">
+
+                <button
+                    class="tab active"
+                    id="placeTab"
+                    onclick="showSection('places')">
+
+                    📍 Places
+
+                </button>
+
+                <button
+                    class="tab"
+                    id="activityTab"
+                    onclick="showSection('activities')">
+
+                    🎯 Activities
+
+                </button>
+
+                <button
+                    class="tab"
+                    id="travelTab"
+                    onclick="showSection('travel')">
+
+                    ✈️ Travel
+
+                </button>
+
+            </div>
+
+            <div class="panel">
+
+                <div
+                    id="sectionTitle"
+                    class="title">
+
+                    Places
+
+                </div>
+
+                <div
+                    class="grid"
+                    id="mainGrid">
+
+                </div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="title">
+                    Recent Events
+                </div>
+
+                <div id="milestones" class="milestones"></div>
+
+                <div
+                    class="feed"
+                    id="feed">
+
+                </div>
+
+            </div>
+
+        </main>
+
+        <aside class="right">
+
+            <div class="panel">
+
+                <div class="title">
+                    Relationships
+                </div>
+
+                <div id="npcs"></div>
+
+                <button
+                    class="tab full-width"
+                    onclick="friendsModal()">
+
+                    VIEW ALL
+
+                </button>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="title">
+                    About You
+                </div>
+
+                <div
+                    id="info"
+                    class="life-info">
+
+                </div>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+</section>
+
+<div
+    class="modal hidden"
+    id="modal">
+
+    <div
+        class="modalbox"
+        id="modalBox">
+
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
