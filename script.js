@@ -799,10 +799,8 @@ function judgeReportHtml() {
 function judgeGuideHtml() {
     return "<div class='judge-nav'>" +
         "<button class='judge-nav-btn' onclick='openJudgeOverview()'>📖 Overview</button>" +
-        "<button class='judge-nav-btn' onclick='openJudgeOutcomes()'>🔀 Outcomes</button>" +
-        "<button class='judge-nav-btn' onclick='openJudgeReport()'>📋 Report Card</button>" +
         "<button class='judge-nav-btn' onclick='openJudgeFeatures()'>✨ Features</button>" +
-        "<button class='judge-nav-btn' onclick='openJudgeTimeline()'>🕒 Timeline</button>" +
+        "<button class='judge-nav-btn' onclick='openJudgeOutcomes()'>🔀 Outcomes</button>" +
         "</div>";
 }
 
@@ -852,7 +850,22 @@ function openJudgeTimeline() {
 
 function openJudgeMode() {
     if (!unlockJudgeDemo()) return;
-    showModal("🎬 JUDGE DEMO", judgeGuideHtml() + judgeReportHtml() + "<button class='primary' onclick='closeModal()'>CLOSE JUDGE DEMO</button>");
+    const content =
+        "<p class='judge-welcome'>A judge-only presentation of LIFE — no playable game state is opened.</p>" +
+        "<div class='judge-hero'>" +
+            "<div class='judge-hero-kicker'>LIFE · EVERY CHOICE HAS A COST</div>" +
+            "<h3>Build the best life you can — without sacrificing everything else.</h3>" +
+            "<p>LIFE is a 30-day choice-based life simulator where decisions shape your relationships, opportunities, finances, skills and final outcome.</p>" +
+        "</div>" +
+        "<div class='judge-feature-grid'>" +
+            "<div><strong>30 DAYS</strong><span>Two stages: school life followed by adult life.</span></div>" +
+            "<div><strong>EVERY CHOICE MATTERS</strong><span>Choices create trade-offs instead of one correct path.</span></div>" +
+            "<div><strong>13 NPCs</strong><span>Individual characters have roles, relationships and memories.</span></div>" +
+            "<div><strong>9 OUTCOMES</strong><span>Your choices and final life balance determine where you end up.</span></div>" +
+        "</div>" +
+        "<p class='modal-intro judge-tip'><strong>Judge navigation:</strong> Use the buttons above to explore what the game is, its features and its possible outcomes. Starting the Judge Demo does not start or modify a playable life.</p>" +
+        "<button class='primary' onclick='closeModal()'>CLOSE JUDGE DEMO</button>";
+    showModal("🎬 JUDGE DEMO", judgeGuideHtml() + content);
 }
 
 function endGame(reason) {
@@ -1120,42 +1133,9 @@ function unlockJudgeDemo() {
 
 function demoMode() {
     if (!unlockJudgeDemo()) return;
-    clearSave();
-    state.name = "Alex";
-    state.country = "United Arab Emirates";
-    state.startingCountry = "United Arab Emirates";
-    state.age = 18;
-    state.personality = "balanced";
-    state.day = 20; state.hour = 17; state.minute = 30;
-    state.cash = 235; state.debt = 0;
-    state.groceries = { meals: 5, drinks: 8 };
-    state.location = "home"; state.ended = false;
-    state.stats = { health: 82, energy: 68, hunger: 72, hydration: 78, hygiene: 76, mood: 84 };
-    state.skills = { education: 58, social: 52, fitness: 44, work: 47 };
-    state.feed = []; state.history = []; state.currentSection = "places";
-    state.weather = "clear"; state.milestones = [];
-    state.goals = ["health","study","friend"]; state.achievements = ["first_step","good_friend","hard_worker"];
-    state.daily = { activities: 4, spent: 145, earned: 280 };
-    state.lastSummary = "Demo snapshot: 20 days into a life already in progress.";
-    state.npcMeetings = {}; state.npcMemories = { "Albert Lalu": [{day:5,text:"You helped me with the school project.",sentiment:"positive"},{day:10,text:"You invited a friend to join an earning opportunity.",sentiment:"positive"}], "Harshith Pradeep": [{day:10,text:"You made room for your friends in an important opportunity.",sentiment:"positive"}] }; state.decisions = [{day:5,title:"An Unexpected Opportunity",choice:"Help your friend",id:"school_opportunity"},{day:10,title:"A Chance to Earn",choice:"Ask a friend to join",id:"money_choice"}];
-    state.decisionFlags = {school_opportunity:true,money_choice:true};
-    state.timeline = [
-        {day:1,title:"Life begins",detail:"You started with AED 100."},
-        {day:5,title:"An Unexpected Opportunity",detail:"You chose to help your friend."},
-        {day:10,title:"A Chance to Earn",detail:"You chose to ask a friend to join."},
-        {day:16,title:"Adult life",detail:"School ended and a new chapter began."}
-    ];
-    state.totalEarned = 280; state.totalSpent = 145;
-    state.npcs = NPC_DATA.map(([name, role, emoji], idx) => ({name,emoji,role,trait:NPC_TRAITS[idx % NPC_TRAITS.length],relationship:45 + (idx===0 ? 40 : idx===1 ? 25 : 0)}));
-    state.npcs[0].relationship=92; state.npcs[1].relationship=70;
-    document.getElementById("landing").classList.add("hidden");
-    document.getElementById("intro").classList.add("hidden");
-    document.getElementById("game").classList.remove("hidden");
-    updateLocation(); render();
-    addFeed("DEMO MODE: This scenario is designed to show the core LIFE experience.", "good");
-    addTimeline("Demo scenario", "A judge-ready snapshot of a life already in progress.");
     openJudgeMode();
 }
+
 document.addEventListener("DOMContentLoaded", () => {
     const hasSave = !!localStorage.getItem(SAVE_KEY);
     document.getElementById("continueButton").classList.toggle("hidden", !hasSave);
