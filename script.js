@@ -25,6 +25,8 @@ const state = {
     daily: { activities: 0, spent: 0, earned: 0 },
     lastSummary: "",
     ended: false,
+    achievements: [],
+    npcMeetings: {},
 };
 
 const WEATHER = {
@@ -137,8 +139,23 @@ const TRAVEL = [
     ["Pakistan", "🇵🇰", 120], ["India", "🇮🇳", 130], ["Spain", "🇪🇸", 180],
 ];
 
-const NAMES = ["Albert Lalu", "Harshith Pradeep", "Fares Yusuf", "Anand John", "Ryan Matthew", "Mohammed Shamil", "Yahya bin Navas", "Omar Aslam"];
-const EMOJIS = ["🙂", "😎", "🤓", "😊", "😄", "🥳", "😌", "🤗"];
+const NPC_DATA = [
+    ["Albert Lalu", "best friend", "🙂"],
+    ["Harshith Pradeep", "close friend", "😎"],
+    ["Fares Yusuf", "connector", "🤓"],
+    ["Anand John", "classmate", "😊"],
+    ["Ryan Matthew", "sports friend", "😄"],
+    ["Mohammed Shamil", "trusted friend", "🥳"],
+    ["Yahya bin Navas", "mentor", "😌"],
+    ["Omar Aslam", "banker", "🤗"],
+    ["Mohammed Nadeem", "investor", "🧑‍💼"],
+    ["Isaac Newton", "rival", "🧐"],
+    ["Ahmed Raees", "entrepreneur", "💡"],
+    ["Jishan Mohammed", "social friend", "🎉"],
+    ["Saud.A", "academic", "📚"],
+    ["Sultan", "football friend", "⚽"],
+    ["Hyder", "quiet friend", "🙂"]
+];
 const EVENTS = [
     [0.22, "You had a quiet day.", "info", { mood: 4 }],
     [0.16, "You found AED 15 on the way home.", "good", {}, 15],
@@ -184,9 +201,12 @@ function loadGame() {
         state.history = Array.isArray(state.history) ? state.history : [];
         state.feed = Array.isArray(state.feed) ? state.feed : [];
         state.milestones = Array.isArray(state.milestones) ? state.milestones : [];
+        state.achievements = Array.isArray(state.achievements) ? state.achievements : [];
+        state.npcMeetings = state.npcMeetings && typeof state.npcMeetings === "object" ? state.npcMeetings : {};
         state.npcs = (Array.isArray(state.npcs) ? state.npcs : []).map((npc, idx) => ({
             ...npc,
-            trait: npc.trait || NPC_TRAITS[idx % NPC_TRAITS.length],
+            trait: npc.trait || (NPC_DATA[idx] ? NPC_DATA[idx][1] : NPC_TRAITS[idx % NPC_TRAITS.length]),
+            role: npc.role || (NPC_DATA[idx] ? NPC_DATA[idx][1] : "friend"),
             relationship: clamp(Number(npc.relationship) || 0, 0, 100),
         }));
         state.location = PLACES.some(place => place.id === state.location) ? state.location : "home";
@@ -222,6 +242,24 @@ function addMilestone(title, detail) {
     if (state.milestones.some(item => item.title === title)) return;
     state.milestones.push({ title, detail, day: state.day });
     addFeed("Milestone: " + title + ".", "good");
+}
+
+const ACHIEVEMENTS = [
+    { id: "first_step", title: "First Step", detail: "Complete your first activity.", test: () => state.daily.activities >= 1 },
+    { id: "good_friend", title: "Good Friend", detail: "Reach 80% with someone.", test: () => state.npcs.some(npc => npc.relationship >= 80) },
+    { id: "well_travelled", title: "Well Travelled", detail: "Visit a country different from where you started.", test: () => state.country !== state.startingCountry },
+    { id: "hard_worker", title: "Hard Worker", detail: "Earn at least AED 250 in one life.", test: () => state.history.some(item => item.text && item.text.includes("earned") && false) || state.totalEarned >= 250 },
+    { id: "scholar", title: "Scholar", detail: "Reach 60 education.", test: () => state.skills.education >= 60 },
+    { id: "balanced_life", title: "Balanced Life", detail: "Finish with health and mood at 70 or higher.", test: () => state.ended && state.stats.health >= 70 && state.stats.mood >= 70 },
+];
+
+function updateAchievements() {
+    ACHIEVEMENTS.forEach(achievement => {
+        if (achievement.test() && !state.achievements.includes(achievement.id)) {
+            state.achievements.push(achievement.id);
+            addFeed("Achievement unlocked: " + achievement.title + ".", "good");
+        }
+    });
 }
 
 function updateGoals() {
@@ -280,6 +318,8 @@ function advanceDay() {
     if (state.stats.hydration < 20) state.stats.health = clamp(state.stats.health - 5, 0, 100);
     if (state.stats.hygiene < 20) state.stats.health = clamp(state.stats.health - 3, 0, 100);
 
+    state.totalEarned = Number(state.totalEarned) || 0;
+    state.totalSpent = Number(state.totalSpent) || 0;
     if (state.debt > 0) {
         const interest = Math.round(state.debt * 0.05);
         state.debt = clamp(state.debt + interest, 0, state.maxDebt);
@@ -302,6 +342,7 @@ function advanceDay() {
         addFeed(event[1], event[2]);
     }
     updateGoals();
+    updateAchievements();
 
     state.weather = Object.keys(WEATHER)[Math.floor(Math.random() * Object.keys(WEATHER).length)];
     if (state.location === "school" && state.day > 15) {
@@ -347,10 +388,13 @@ function startGame() {
     state.goals = [];
     state.daily = { activities: 0, spent: 0, earned: 0 };
     state.lastSummary = "";
-    state.npcs = NAMES.map((name, idx) => ({
+    state.achievements = [];
+    state.npcMeetings = {};
+    state.npcs = NPC_DATA.map(([name, role, emoji], idx) => ({
         name,
-        emoji: EMOJIS[idx],
-        trait: NPC_TRAITS[idx],
+        emoji,
+        role,
+        trait: role,
         relationship: 20 + Math.floor(Math.random() * 40),
     }));
 
@@ -424,6 +468,7 @@ function doActivity(id) {
     }
     state.cash -= activity.cost;
     state.daily.spent += activity.cost;
+    state.totalSpent = (Number(state.totalSpent) || 0) + activity.cost;
     state.daily.activities++;
     const effects = { ...activity.effects };
     if (activity.id === "sleep" && (state.stats.hunger < 30 || state.stats.hydration < 30)) {
@@ -437,6 +482,7 @@ function doActivity(id) {
         const income = activity.id === "shift" ? job.pay : activity.effects.income;
         state.cash += income;
         state.daily.earned += income;
+        state.totalEarned = (Number(state.totalEarned) || 0) + income;
         addFeed("You earned " + money(income) + " as a " + job.title + ".", "good");
     }
     if (state.personality === "academic" && activity.effects.education) state.skills.education += 3;
@@ -452,6 +498,7 @@ function doActivity(id) {
     }
     updateMilestones();
     updateGoals();
+    updateAchievements();
     checkGameOver();
     render();
     saveGame();
@@ -510,7 +557,23 @@ function endGame(reason) {
     else if (reputation >= 70) verdict = "Your friends made the month better.";
     else if (state.skills.fitness >= state.skills.education) verdict = "You spent the month staying active.";
     else if (state.cash >= 200) verdict = "You managed your money well.";
-    showModal("🏁 Results", "<p>" + (reason || "Thirty days are up. Here's how things turned out.") + "</p><p style='margin-top:14px'><strong>" + verdict + "</strong></p><p style='margin-top:14px'>Cash: <strong>" + money(state.cash) + "</strong><br>Debt: <strong>" + money(state.debt) + "</strong><br>Goals: <strong>" + state.goals.length + " / " + GOALS.length + "</strong><br>Memories: <strong>" + state.milestones.length + "</strong></p><button class='primary' onclick='restartGame()'>START OVER</button>");
+    updateAchievements();
+    const bestFriend = state.npcs.slice().sort((a,b) => b.relationship - a.relationship)[0];
+    const weakest = Object.entries(state.skills).sort((a,b) => a[1] - b[1])[0];
+    const strongest = Object.entries(state.skills).sort((a,b) => b[1] - a[1])[0];
+    const report = "<p>" + (reason || "Thirty days are up. Here's how things turned out.") + "</p>" +
+        "<p style='margin-top:14px'><strong>" + verdict + "</strong></p>" +
+        "<div class='report-grid' style='margin-top:16px'>" +
+        "<div><span>Cash</span><strong>" + money(state.cash) + "</strong></div>" +
+        "<div><span>Debt</span><strong>" + money(state.debt) + "</strong></div>" +
+        "<div><span>Education</span><strong>" + Math.round(state.skills.education) + "</strong></div>" +
+        "<div><span>Fitness</span><strong>" + Math.round(state.skills.fitness) + "</strong></div>" +
+        "<div><span>Social</span><strong>" + Math.round(state.skills.social) + "</strong></div>" +
+        "<div><span>Work</span><strong>" + Math.round(state.skills.work) + "</strong></div></div>" +
+        "<p style='margin-top:14px'><strong>Your strongest area:</strong> " + strongest[0] + "<br><strong>Needs the most work:</strong> " + weakest[0] + "<br><strong>Closest relationship:</strong> " + (bestFriend ? bestFriend.name + " (" + bestFriend.relationship + "%)" : "None") + "</p>" +
+        "<p style='margin-top:14px'><strong>Goals:</strong> " + state.goals.length + " / " + GOALS.length + "<br><strong>Achievements:</strong> " + state.achievements.length + " / " + ACHIEVEMENTS.length + "<br><strong>Memories:</strong> " + state.milestones.length + "<br><strong>Total earned:</strong> " + money(state.totalEarned || 0) + "<br><strong>Total spent:</strong> " + money(state.totalSpent || 0) + "</p>" +
+        "<button class='primary' onclick='restartGame()'>START OVER</button>";
+    showModal("🏁 Your Life Report", report);
 }
 
 function showModal(title, content) {
@@ -537,7 +600,7 @@ function restartGame() {
 }
 
 function phone() {
-    showModal("📱 Phone", "<button class='option' onclick='bankApp()'><span class='opt-title'>🏦 Bank</span><span class='opt-sub'>Check balance and loans</span></button><button class='option' onclick='messagesApp()'><span class='opt-title'>💬 Messages</span><span class='opt-sub'>Chat with friends</span></button><button class='option' onclick='jobsApp()'><span class='opt-title'>💼 Jobs</span><span class='opt-sub'>Look for work</span></button><button class='option' onclick='goalsApp()'><span class='opt-title'>✓ Goals</span><span class='opt-sub'>See what you are working toward</span></button>");
+    showModal("📱 Phone", "<button class='option' onclick='bankApp()'><span class='opt-title'>🏦 Bank</span><span class='opt-sub'>Check balance and loans</span></button><button class='option' onclick='messagesApp()'><span class='opt-title'>💬 Messages</span><span class='opt-sub'>Chat with friends</span></button><button class='option' onclick='jobsApp()'><span class='opt-title'>💼 Jobs</span><span class='opt-sub'>Look for work</span></button><button class='option' onclick='goalsApp()'><span class='opt-title'>✓ Goals</span><span class='opt-sub'>See what you are working toward</span></button><button class='option' onclick='achievementsModal()'><span class='opt-title'>🏆 Achievements</span><span class='opt-sub'>Track special milestones</span></button>");
 }
 
 function goalsApp() {
@@ -572,7 +635,54 @@ function messagesApp() {
 }
 
 function chatWith(name) {
-    showModal("💬 " + name, "<button class='option' onclick='chatAction(" + JSON.stringify(name) + ", 5)'>😊 Friendly chat (+5)</button><button class='option' onclick='chatAction(" + JSON.stringify(name) + ", 10)'>🎁 Give a gift (+10, costs AED 20)</button><button class='option' onclick='chatAction(" + JSON.stringify(name) + ", -5)'>😒 Be rude (-5)</button>");
+    const npc = state.npcs.find(item => item.name === name);
+    if (!npc) return;
+    const meetings = Number(state.npcMeetings[name] || 0);
+    let extra = "<p style='color:var(--muted);font-size:12px;margin-bottom:10px;'>" + npc.role + " · " + npc.trait + " · " + meetings + " conversations</p>";
+    if (npc.role === "mentor") extra += "<button class='option' onclick='mentorAdvice()'>🧭 Ask for advice (+education)</button>";
+    if (npc.role === "banker") extra += "<button class='option' onclick='bankTip()'>🏦 Ask for a money tip</button>";
+    if (npc.role === "investor") extra += "<button class='option' onclick='investorPitch()'>💡 Pitch an idea</button>";
+    if (npc.role === "rival") extra += "<button class='option' onclick='rivalChallenge()'>🏁 Friendly challenge</button>";
+    showModal("💬 " + name, extra + "<button class='option' onclick='chatAction(" + JSON.stringify(name) + ", 5)'>😊 Friendly chat (+5)</button><button class='option' onclick='chatAction(" + JSON.stringify(name) + ", 10)'>🎁 Give a gift (+10, costs AED 20)</button><button class='option' onclick='chatAction(" + JSON.stringify(name) + ", -5)'>😒 Be rude (-5)</button>");
+}
+
+function mentorAdvice() {
+    state.skills.education += 5;
+    state.stats.mood = clamp(state.stats.mood + 3, 0, 100);
+    addFeed("Your mentor gave you useful advice. Education +5.", "good");
+    closeModal(); render(); saveGame();
+}
+
+function bankTip() {
+    state.skills.work += 3;
+    state.stats.mood = clamp(state.stats.mood + 2, 0, 100);
+    addFeed("You learned a practical money tip. Work skill +3.", "good");
+    closeModal(); render(); saveGame();
+}
+
+function investorPitch() {
+    if (state.skills.work < 10) {
+        addFeed("Your pitch needs more experience. Build your work skill first.", "bad");
+        return;
+    }
+    state.cash += 35;
+    state.totalEarned = (Number(state.totalEarned) || 0) + 35;
+    state.skills.work += 5;
+    addFeed("Your idea got a small vote of confidence: AED 35.", "good");
+    closeModal(); render(); saveGame();
+}
+
+function rivalChallenge() {
+    const fitness = state.skills.fitness + state.skills.education;
+    if (fitness >= 25) {
+        state.stats.mood = clamp(state.stats.mood + 8, 0, 100);
+        state.skills.social += 3;
+        addFeed("You held your own in a friendly challenge.", "good");
+    } else {
+        state.stats.mood = clamp(state.stats.mood - 4, 0, 100);
+        addFeed("The challenge reminded you that there is room to improve.", "info");
+    }
+    closeModal(); render(); saveGame();
 }
 
 function chatAction(name, amount) {
@@ -581,8 +691,12 @@ function chatAction(name, amount) {
         state.cash -= 20;
     }
     const npc = state.npcs.find(item => item.name === name);
-    if (npc) npc.relationship = clamp(npc.relationship + amount, 0, 100);
-    addFeed("You chatted with " + name + "."); closeModal(); render(); saveGame();
+    if (npc) {
+        npc.relationship = clamp(npc.relationship + amount, 0, 100);
+        state.npcMeetings[name] = Number(state.npcMeetings[name] || 0) + 1;
+    }
+    addFeed("You chatted with " + name + ".");
+    updateAchievements(); closeModal(); render(); saveGame();
 }
 
 function jobsApp() {
@@ -604,12 +718,20 @@ function memoriesModal() {
 }
 
 function friendsModal() {
-    const html = state.npcs.map(npc => "<div class='npc-row'><span class='avatar'>" + npc.emoji + "</span><div><div class='npc-name'>" + npc.name + "</div><div class='npc-rel'>" + npc.trait + " · " + npc.relationship + "%</div></div><div class='rel-bar'><div class='rel-fill' style='width:" + npc.relationship + "%'></div></div></div>").join("");
-    showModal("👥 Friends", html || "<p>You haven't met anyone yet.</p>");
+    const html = state.npcs.map(npc => "<button class='option' onclick='chatWith(" + JSON.stringify(npc.name) + ")'><span class='opt-title'>" + npc.emoji + " " + npc.name + "</span><span class='opt-sub'>" + npc.role + " · Relationship " + npc.relationship + "%</span></button>").join("");
+    showModal("👥 People in Your Life", html || "<p>You haven't met anyone yet.</p>");
+}
+
+function achievementsModal() {
+    const html = ACHIEVEMENTS.map(item => "<div class='feed-item " + (state.achievements.includes(item.id) ? "good" : "info") + "'>" + (state.achievements.includes(item.id) ? "🏆 " : "○ ") + "<strong>" + item.title + "</strong><br><span style='color:var(--muted)'>" + item.detail + "</span></div>").join("");
+    showModal("🏆 Achievements (" + state.achievements.length + "/" + ACHIEVEMENTS.length + ")", html);
 }
 
 function render() {
     state.cash = Number.isFinite(Number(state.cash)) ? Number(state.cash) : 0;
+    state.totalEarned = Number(state.totalEarned) || 0;
+    state.totalSpent = Number(state.totalSpent) || 0;
+    state.achievements = Array.isArray(state.achievements) ? state.achievements : [];
     state.debt = Number.isFinite(Number(state.debt)) ? Math.max(0, Number(state.debt)) : 0;
     state.day = Number.isFinite(Number(state.day)) ? Math.max(1, Number(state.day)) : 1;
     state.hour = Number.isFinite(Number(state.hour)) ? ((Number(state.hour) % 24) + 24) % 24 : 7;
@@ -655,7 +777,7 @@ function renderInfo() {
     const personality = PERSONALITIES[state.personality] || PERSONALITIES.balanced;
     const completed = GOALS.filter(goal => state.goals.includes(goal.id)).length;
     const location = PLACES.find(item => item.id === state.location) || PLACES[0];
-    document.getElementById("info").innerHTML = "<div class='info-row'><span>Age</span><span class='input'>" + state.age + "</span></div><div class='info-row'><span>Personality</span><span class='input'>" + personality.label + "</span></div><div class='info-row'><span>Country</span><span class='input'>" + state.country + "</span></div><div class='info-row'><span>Location</span><span class='input'>" + location.name + "</span></div><div class='info-row'><span>Day</span><span class='input'>" + state.day + " / " + state.totalDays + "</span></div><div class='info-row'><span>Goals</span><span class='input'>" + completed + " / " + GOALS.length + "</span></div>";
+    document.getElementById("info").innerHTML = "<div class='info-row'><span>Age</span><span class='input'>" + state.age + "</span></div><div class='info-row'><span>Personality</span><span class='input'>" + personality.label + "</span></div><div class='info-row'><span>Country</span><span class='input'>" + state.country + "</span></div><div class='info-row'><span>Location</span><span class='input'>" + location.name + "</span></div><div class='info-row'><span>Day</span><span class='input'>" + state.day + " / " + state.totalDays + "</span></div><div class='info-row'><span>Goals</span><span class='input'>" + completed + " / " + GOALS.length + "</span></div><div class='info-row'><span>Achievements</span><span class='input'>" + state.achievements.length + " / " + ACHIEVEMENTS.length + "</span></div>";
 }
 
 function renderFeed() {
