@@ -212,6 +212,14 @@ function loadGame() {
         state.npcMeetings = state.npcMeetings && typeof state.npcMeetings === "object" ? state.npcMeetings : {};
         state.npcMemories = state.npcMemories && typeof state.npcMemories === "object" ? state.npcMemories : {};
         state.decisions = Array.isArray(state.decisions) ? state.decisions : [];
+        state.decisions = state.decisions.map(item => ({
+            ...item,
+            id: item.id || (
+                item.title === "An Unexpected Opportunity" ? "school_opportunity" :
+                item.title === "A Chance to Earn" ? "money_choice" :
+                item.title === "What Matters Most?" ? "future_choice" : null
+            )
+        }));
         state.decisionFlags = state.decisionFlags && typeof state.decisionFlags === "object" ? state.decisionFlags : {};
         state.timeline = Array.isArray(state.timeline) ? state.timeline : [];
         state.totalEarned = Number(state.totalEarned) || 0;
@@ -781,11 +789,6 @@ function judgeReportHtml() {
 
 function openJudgeMode() {
     showModal("🎬 JUDGE MODE", judgeReportHtml() + "<button class='primary' onclick='closeModal()'>BACK TO LIFE</button>");
-}
-
-function whatIfSummary() {
-    if (!state.decisions.length) return "You made no major recorded decisions.";
-    return state.decisions.slice(-3).map(item => "<div class='feed-item info'><strong>Day " + item.day + " — " + item.title + "</strong><br>You chose <strong>" + item.choice + "</strong>.<br><span style='color:var(--muted)'>A different choice could have changed another part of your life.</span></div>").join("");
 }
 
 function endGame(reason) {
