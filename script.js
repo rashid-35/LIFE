@@ -27,6 +27,8 @@ const state = {
     ended: false,
     achievements: [],
     npcMeetings: {},
+    totalEarned: 0,
+    totalSpent: 0,
 };
 
 const WEATHER = {
@@ -156,6 +158,7 @@ const NPC_DATA = [
     ["Sultan", "football friend", "⚽"],
     ["Hyder", "quiet friend", "🙂"]
 ];
+
 const EVENTS = [
     [0.22, "You had a quiet day.", "info", { mood: 4 }],
     [0.16, "You found AED 15 on the way home.", "good", {}, 15],
@@ -203,10 +206,12 @@ function loadGame() {
         state.milestones = Array.isArray(state.milestones) ? state.milestones : [];
         state.achievements = Array.isArray(state.achievements) ? state.achievements : [];
         state.npcMeetings = state.npcMeetings && typeof state.npcMeetings === "object" ? state.npcMeetings : {};
+        state.totalEarned = Number(state.totalEarned) || 0;
+        state.totalSpent = Number(state.totalSpent) || 0;
         state.npcs = (Array.isArray(state.npcs) ? state.npcs : []).map((npc, idx) => ({
             ...npc,
-            trait: npc.trait || (NPC_DATA[idx] ? NPC_DATA[idx][1] : NPC_TRAITS[idx % NPC_TRAITS.length]),
             role: npc.role || (NPC_DATA[idx] ? NPC_DATA[idx][1] : "friend"),
+            trait: npc.trait || NPC_TRAITS[idx % NPC_TRAITS.length],
             relationship: clamp(Number(npc.relationship) || 0, 0, 100),
         }));
         state.location = PLACES.some(place => place.id === state.location) ? state.location : "home";
@@ -248,7 +253,7 @@ const ACHIEVEMENTS = [
     { id: "first_step", title: "First Step", detail: "Complete your first activity.", test: () => state.daily.activities >= 1 },
     { id: "good_friend", title: "Good Friend", detail: "Reach 80% with someone.", test: () => state.npcs.some(npc => npc.relationship >= 80) },
     { id: "well_travelled", title: "Well Travelled", detail: "Visit a country different from where you started.", test: () => state.country !== state.startingCountry },
-    { id: "hard_worker", title: "Hard Worker", detail: "Earn at least AED 250 in one life.", test: () => state.history.some(item => item.text && item.text.includes("earned") && false) || state.totalEarned >= 250 },
+    { id: "hard_worker", title: "Hard Worker", detail: "Earn at least AED 250 in one life.", test: () => (Number(state.totalEarned) || 0) >= 250 },
     { id: "scholar", title: "Scholar", detail: "Reach 60 education.", test: () => state.skills.education >= 60 },
     { id: "balanced_life", title: "Balanced Life", detail: "Finish with health and mood at 70 or higher.", test: () => state.ended && state.stats.health >= 70 && state.stats.mood >= 70 },
 ];
@@ -390,11 +395,13 @@ function startGame() {
     state.lastSummary = "";
     state.achievements = [];
     state.npcMeetings = {};
+    state.totalEarned = 0;
+    state.totalSpent = 0;
     state.npcs = NPC_DATA.map(([name, role, emoji], idx) => ({
         name,
         emoji,
         role,
-        trait: role,
+        trait: NPC_TRAITS[idx % NPC_TRAITS.length],
         relationship: 20 + Math.floor(Math.random() * 40),
     }));
 
@@ -630,7 +637,7 @@ function repayLoan() {
 
 function messagesApp() {
     let html = "";
-    state.npcs.forEach(npc => { html += "<button class='option' onclick='chatWith(" + JSON.stringify(npc.name) + ")'><span class='opt-title'>" + npc.emoji + " " + npc.name + "</span><span class='opt-sub'>Relationship: " + npc.relationship + "%</span></button>"; });
+    state.npcs.forEach(npc => { html += "<button class='option' onclick='chatWith(" + JSON.stringify(npc.name) + ")'><span class='opt-title'>" + npc.emoji + " " + npc.name + "</span><span class='opt-sub'>" + npc.role + " · Relationship " + npc.relationship + "%</span></button>"; });
     showModal("💬 Messages", html);
 }
 
@@ -706,7 +713,7 @@ function jobsApp() {
 }
 
 function historyModal() {
-    const html = state.history.length ? state.history.slice().reverse().slice(0, 30).map(item => "<div class='feed-item " + item.type + "'><span class='time-tag'>Day " + item.day + " " + item.time + "</span>" + item.text + "</div>").join("") : "<p>No events yet.</p>";
+    const html = state.history.length ? state.history.slice().reverse().slice(0, 30).map(item => "<div class='feed-item " + item.type + "'><span class='time-tag'>Day " + item.day + " " + item.time + "</span>" + item.text + "</div>").join("") : "<p>No history yet.</p>";
     showModal("📜 History", html);
 }
 
@@ -756,8 +763,8 @@ function renderStats() {
         if (!Number.isFinite(Number(state.stats[key]))) state.stats[key] = 0;
         state.stats[key] = clamp(Number(state.stats[key]), 0, 100);
     });
-    let html = rows.map(([key, label]) => "<div class='stat-row'><span class='label'>" + label + "</span><div class='stat-bar'><div class='fill " + key + "' style='width:" + state.stats[key] + "%'></div></div><span class='value'>" + Math.round(state.stats[key]) + "</span></div>").join("");
-    html += "<div style='margin-top:14px;border-top:1px solid var(--line);padding-top:12px;'>" + ["education", "social", "fitness", "work"].map(key => "<div class='stat-row'><span class='label'>" + key[0].toUpperCase() + key.slice(1) + "</span><span class='value'>" + state.skills[key] + "</span></div>").join("") + "</div>";
+    let html = rows.map(([key, label]) => "<div class='stat-row'><span class='label'>" + label + "</span><div class='stat-bar'><div class='fill " + key + "' style='width:" + state.stats[key] + "%'></div></div></div>").join("");
+    html += "<div style='margin-top:14px;border-top:1px solid var(--line);padding-top:12px;'>" + ["education", "social", "fitness", "work"].map(key => "<div class='stat-row'><span class='label'>" + key[0].toUpperCase() + key.slice(1) + "</span><div class='stat-bar'><div class='fill " + key + "' style='width:" + state.skills[key] + "%'></div></div></div>").join("") + "</div>";
     document.getElementById("stats").innerHTML = html;
     const warnings = [];
     if (state.stats.energy < 25) warnings.push("You are running low on energy.");
@@ -770,7 +777,7 @@ function renderStats() {
 }
 
 function renderNPCs() {
-    document.getElementById("npcs").innerHTML = state.npcs.slice(0, 4).map(npc => "<div class='npc-row'><span class='avatar'>" + npc.emoji + "</span><div><div class='npc-name'>" + npc.name + "</div><div class='npc-rel'>" + npc.relationship + "%</div></div><div class='rel-bar'><div class='rel-fill' style='width:" + npc.relationship + "%'></div></div></div>").join("");
+    document.getElementById("npcs").innerHTML = state.npcs.slice(0, 4).map(npc => "<div class='npc-row'><span class='avatar'>" + npc.emoji + "</span><div><div class='npc-name'>" + npc.name + "</div><div class='npc-rel'>" + npc.relationship + "%</div></div></div>").join("");
 }
 
 function renderInfo() {
@@ -791,12 +798,12 @@ function renderMainGrid() {
     const grid = document.getElementById("mainGrid");
     document.getElementById("sectionTitle").textContent = state.currentSection[0].toUpperCase() + state.currentSection.slice(1);
     if (state.currentSection === "places") {
-        grid.innerHTML = PLACES.filter(place => place.id !== "school" || state.day <= 15).filter(place => place.id !== "work" || state.day > 15).map(place => "<div class='card' onclick='goTo(" + JSON.stringify(place.id) + ")'><div class='emoji'>" + place.emoji + "</div><div class='name'>" + place.name + "</div><div class='sub'>" + (place.id === state.location ? "You are here" : "Visit") + "</div></div>").join("");
+        grid.innerHTML = PLACES.filter(place => place.id !== "school" || state.day <= 15).filter(place => place.id !== "work" || state.day > 15).map(place => "<div class='card' onclick='goTo(" + JSON.stringify(place.id) + ")'><div class='emoji'>" + place.emoji + "</div><div class='name'>" + place.name + "</div></div>").join("");
     } else if (state.currentSection === "activities") {
         const activities = ACTIVITIES[state.location] || [];
-        grid.innerHTML = activities.map(item => "<div class='card' onclick='doActivity(" + JSON.stringify(item.id) + ")'><div class='emoji'>" + item.emoji + "</div><div class='name'>" + item.name + "</div><div class='sub'>" + (item.cost ? money(item.cost) : "Free") + " • " + (item.time / 60).toFixed(1) + "h</div></div>").join("");
+        grid.innerHTML = activities.map(item => "<div class='card' onclick='doActivity(" + JSON.stringify(item.id) + ")'><div class='emoji'>" + item.emoji + "</div><div class='name'>" + item.name + "</div><div class='meta'>" + (item.cost ? "AED " + item.cost : "Free") + " • " + item.time + " min</div></div>").join("");
     } else {
-        grid.innerHTML = TRAVEL.map(([country, emoji, cost]) => "<div class='card' onclick='travelTo(" + JSON.stringify(country) + ")'><div class='emoji'>" + emoji + "</div><div class='name'>" + country + "</div><div class='sub'>" + (country === state.country ? "Current" : money(cost)) + "</div></div>").join("");
+        grid.innerHTML = TRAVEL.map(([country, emoji, cost]) => "<div class='card' onclick='travelTo(" + JSON.stringify(country) + ")'><div class='emoji'>" + emoji + "</div><div class='name'>" + country + "</div><div class='meta'>AED " + cost + "</div></div>").join("");
     }
 }
 
