@@ -27,6 +27,7 @@ const state = {
     ended: false,
     achievements: [],
     npcMeetings: {},
+    npcMemories: {},
     decisions: [],
     decisionFlags: {},
     timeline: [],
@@ -209,6 +210,7 @@ function loadGame() {
         state.milestones = Array.isArray(state.milestones) ? state.milestones : [];
         state.achievements = Array.isArray(state.achievements) ? state.achievements : [];
         state.npcMeetings = state.npcMeetings && typeof state.npcMeetings === "object" ? state.npcMeetings : {};
+        state.npcMemories = state.npcMemories && typeof state.npcMemories === "object" ? state.npcMemories : {};
         state.decisions = Array.isArray(state.decisions) ? state.decisions : [];
         state.decisionFlags = state.decisionFlags && typeof state.decisionFlags === "object" ? state.decisionFlags : {};
         state.timeline = Array.isArray(state.timeline) ? state.timeline : [];
@@ -303,6 +305,56 @@ const DECISION_MOMENTS = [
 function changeNpc(amount) {
     const npc = state.npcs.slice().sort((a,b) => b.relationship - a.relationship)[0];
     if (npc) npc.relationship = clamp(npc.relationship + amount, 0, 100);
+    return npc || null;
+}
+
+function rememberNpc(name, text, sentiment = "neutral") {
+    if (!name) return;
+    if (!state.npcMemories[name]) state.npcMemories[name] = [];
+    state.npcMemories[name].push({ day: state.day, text, sentiment });
+    state.npcMemories[name] = state.npcMemories[name].slice(-8);
+}
+
+function rememberDecisionWithNpc(id, index) {
+    const npc = state.npcs.slice().sort((a,b) => b.relationship - a.relationship)[0];
+    if (!npc) return;
+    const memories = {
+        school_opportunity: [
+            "You helped when I needed you for the school project.",
+            "You chose to focus on your own studies instead of helping me.",
+            "You tried to balance helping me and studying."
+        ],
+        money_choice: [
+            "You took an opportunity to earn money.",
+            "You chose your goals instead of chasing quick money.",
+            "You invited a friend to join you in an earning opportunity."
+        ],
+        future_choice: [
+            "You told me your career was a priority.",
+            "You made relationships a priority when adult life got busy.",
+            "You decided to invest in yourself and your wellbeing."
+        ]
+    };
+    const text = (memories[id] && memories[id][index]) || "You made an important choice.";
+    rememberNpc(npc.name, text, index === 0 || index === 2 ? "positive" : "negative");
+}
+
+function npcReaction(npc) {
+    const memories = state.npcMemories[npc.name] || [];
+    if (!memories.length) return "We are still getting to know each other.";
+    const last = memories[memories.length - 1];
+    if (last.sentiment === "positive") return "I remember Day " + last.day + " — " + last.text + " It made an impression on me.";
+    if (last.sentiment === "negative") return "I remember Day " + last.day + " — " + last.text + " I haven't forgotten that.";
+    return "I remember Day " + last.day + " — " + last.text;
+}
+
+function npcMemoryList(npc) {
+    const memories = state.npcMemories[npc.name] || [];
+    if (!memories.length) return "<p class='modal-intro'>No specific memories yet. Your future choices can change that.</p>";
+    return "<h3 class='report-heading'>🧠 What they remember</h3>" +
+        memories.slice().reverse().map(memory => "<div class='feed-item " +
+        (memory.sentiment === "positive" ? "good" : memory.sentiment === "negative" ? "bad" : "info") +
+        "'><span class='time-tag'>Day " + memory.day + "</span>" + memory.text + "</div>").join("");
 }
 
 function addTimeline(title, detail) {
@@ -330,7 +382,8 @@ function chooseDecision(id, index) {
     if (!moment || !moment.options[index]) return;
     const option = moment.options[index];
     option[2]();
-    state.decisions.push({ day: state.day, title: moment.title, choice: option[0] });
+    rememberDecisionWithNpc(id, index);
+    state.decisions.push({ day: state.day, title: moment.title, choice: option[0], id });
     addTimeline(moment.title, option[0] + ". " + option[1]);
     addFeed("Decision: " + moment.title + " — " + option[0] + ".", "good");
     closeModal();
@@ -475,6 +528,7 @@ function startGame() {
     state.lastSummary = "";
     state.achievements = [];
     state.npcMeetings = {};
+    state.npcMemories = {};
     state.decisions = [];
     state.decisionFlags = {};
     state.timeline = [{ day: 1, title: "Life begins", detail: "You started a new life with AED 100." }];
@@ -585,7 +639,10 @@ function doActivity(id) {
     addTimeline(activity.name, "You chose to " + activity.name.toLowerCase() + ".");
     if (["socialize", "meet", "cafe_meet"].includes(id)) {
         const npc = state.npcs[Math.floor(Math.random() * state.npcs.length)];
-        if (npc) npc.relationship = clamp(npc.relationship + 5, 0, 100);
+        if (npc) {
+            npc.relationship = clamp(npc.relationship + 5, 0, 100);
+            rememberNpc(npc.name, "You spent time with me and made an effort to stay connected.", "positive");
+        }
     }
     updateMilestones();
     updateGoals();
@@ -651,6 +708,81 @@ function getLifeOutcome() {
     return ["⭐ The All-Rounder", "You built a varied life without letting one area completely take over."];
 }
 
+const DECISION_OUTCOMES = {
+    school_opportunity: [
+        ["Help your friend", "🤝 The People Person", "You would have strengthened relationships by putting someone else first."],
+        ["Study for yourself", "🎓 The Scholar", "You would have pushed education higher, trading some social progress for academic progress."],
+        ["Try to do both", "🌱 The Balanced Life", "You would have balanced social and academic progress, but spent more energy."]
+    ],
+    money_choice: [
+        ["Take the opportunity", "💼 The Career Builder", "You would have gained work experience and extra money, but lost some energy."],
+        ["Focus on your goals", "🎓 The Scholar", "You would have strengthened education and mood instead of taking the quick earning opportunity."],
+        ["Ask a friend to join", "🤝 The People Person", "You would have combined earning with teamwork and a stronger relationship."]
+    ],
+    future_choice: [
+        ["Build your career", "💼 The Career Builder", "You would have prioritized work and education, with less room for mood."],
+        ["Invest in relationships", "🤝 The People Person", "You would have made people the center of adult life and improved social skill and mood."],
+        ["Invest in yourself", "🏃 The Athlete", "You would have focused on fitness, health and personal wellbeing."]
+    ]
+};
+
+function outcomeCardsForDecision(decision) {
+    const options = DECISION_OUTCOMES[decision.id];
+    if (!options) return "";
+    return "<div class='outcome-paths'>" + options.map(item => {
+        const chosen = item[0] === decision.choice;
+        return "<div class='outcome-path " + (chosen ? "chosen" : "") + "'>" +
+            "<div class='outcome-path-top'>" + (chosen ? "✓ YOUR CHOICE" : "ALTERNATIVE PATH") + "</div>" +
+            "<strong>" + item[1] + "</strong>" +
+            "<p><b>If you chose " + item[0] + ":</b> " + item[2] + "</p></div>";
+    }).join("") + "</div>";
+}
+
+function whatIfSummary() {
+    if (!state.decisions.length) return "<p class='modal-intro'>No major recorded decisions yet.</p>";
+    return state.decisions.slice().reverse().map(item =>
+        "<div class='judge-decision'><h4>Day " + item.day + " — " + item.title + "</h4><p>You chose <strong>" + item.choice + "</strong>.</p>" + outcomeCardsForDecision(item) + "</div>"
+    ).join("");
+}
+
+function gradeFor(value) {
+    if (value >= 85) return "A";
+    if (value >= 70) return "B";
+    if (value >= 55) return "C";
+    if (value >= 40) return "D";
+    return "F";
+}
+
+function reportCardHtml() {
+    const rows = [
+        ["Health & Wellbeing", state.stats.health, "How well you cared for yourself."],
+        ["Education", state.skills.education, "Learning and study progress."],
+        ["Relationships", getReputation(), "Average strength of your relationships."],
+        ["Fitness", state.skills.fitness, "Physical activity and fitness progress."],
+        ["Work & Career", state.skills.work, "Experience, earning and career progress."],
+        ["Mood", state.stats.mood, "How positively your month ended."]
+    ];
+    const average = rows.reduce((sum,row) => sum + Number(row[1]), 0) / rows.length;
+    return "<h3 class='report-heading'>📋 FINAL REPORT CARD</h3><div class='report-card'>" +
+        rows.map(row => "<div class='grade-row'><div><strong>" + row[0] + "</strong><span>" + row[2] + "</span></div><b>" + gradeFor(row[1]) + "</b><em>" + Math.round(row[1]) + "/100</em></div>").join("") +
+        "<div class='overall-grade'><span>OVERALL LIFE GRADE</span><strong>" + gradeFor(average) + "</strong><em>" + Math.round(average) + "/100</em></div></div>";
+}
+
+function judgeReportHtml() {
+    const outcome = getLifeOutcome();
+    const decisionHtml = state.decisions.length ? whatIfSummary() : DECISION_MOMENTS.map(moment => {
+        const fake = { id: moment.id, day: moment.day, title: moment.title, choice: "" };
+        return "<div class='judge-decision'><h4>Day " + moment.day + " — " + moment.title + "</h4>" + outcomeCardsForDecision(fake) + "</div>";
+    }).join("");
+    return "<p class='modal-intro'>Judge Mode shows your current outcome, every major decision path, and a brief explanation of what each alternative could have changed.</p>" +
+        "<div class='outcome-banner'><span>🏁 CURRENT OUTCOME — " + outcome[0] + "</span><strong>" + outcome[1] + "</strong></div>" +
+        "<h3 class='report-heading'>🔀 ALL POSSIBLE DECISION PATHS</h3>" + decisionHtml + reportCardHtml();
+}
+
+function openJudgeMode() {
+    showModal("🎬 JUDGE MODE", judgeReportHtml() + "<button class='primary' onclick='closeModal()'>BACK TO LIFE</button>");
+}
+
 function whatIfSummary() {
     if (!state.decisions.length) return "You made no major recorded decisions.";
     return state.decisions.slice(-3).map(item => "<div class='feed-item info'><strong>Day " + item.day + " — " + item.title + "</strong><br>You chose <strong>" + item.choice + "</strong>.<br><span style='color:var(--muted)'>A different choice could have changed another part of your life.</span></div>").join("");
@@ -665,7 +797,7 @@ function endGame(reason) {
     const bestFriend = state.npcs.slice().sort((a,b) => b.relationship - a.relationship)[0];
     const weakest = Object.entries(state.skills).sort((a,b) => a[1] - b[1])[0];
     const strongest = Object.entries(state.skills).sort((a,b) => b[1] - a[1])[0];
-    const report = "<p>" + (reason || "Thirty days are up. Here's how things turned out.") + "</p>" +
+    const report = "<p>" + (reason || "Thirty days are up. Here's how things turned out.") + "</p>" + reportCardHtml() +
         "<div class='outcome-banner'><span>" + outcome[0] + "</span><strong>" + outcome[1] + "</strong></div>" +
         "<div class='report-grid' style='margin-top:16px'>" +
         "<div><span>Cash</span><strong>" + money(state.cash) + "</strong></div>" +
@@ -705,7 +837,7 @@ function restartGame() {
 }
 
 function phone() {
-    showModal("📱 Phone", "<button class='option' onclick='bankApp()'><span class='opt-title'>🏦 Bank</span><span class='opt-sub'>Check balance and loans</span></button><button class='option' onclick='messagesApp()'><span class='opt-title'>💬 Messages</span><span class='opt-sub'>Chat with friends</span></button><button class='option' onclick='jobsApp()'><span class='opt-title'>💼 Jobs</span><span class='opt-sub'>Look for work</span></button><button class='option' onclick='goalsApp()'><span class='opt-title'>✓ Goals</span><span class='opt-sub'>See what you are working toward</span></button><button class='option' onclick='achievementsModal()'><span class='opt-title'>🏆 Achievements</span><span class='opt-sub'>Track special milestones</span></button>");
+    showModal("📱 Phone", "<button class='option' onclick='bankApp()'><span class='opt-title'>🏦 Bank</span><span class='opt-sub'>Check balance and loans</span></button><button class='option' onclick='messagesApp()'><span class='opt-title'>💬 Messages</span><span class='opt-sub'>Chat with friends</span></button><button class='option' onclick='jobsApp()'><span class='opt-title'>💼 Jobs</span><span class='opt-sub'>Look for work</span></button><button class='option' onclick='goalsApp()'><span class='opt-title'>✓ Goals</span><span class='opt-sub'>See what you are working toward</span></button><button class='option' onclick='achievementsModal()'><span class='opt-title'>🏆 Achievements</span><span class='opt-sub'>Track special milestones</span></button><button class='option' onclick='openJudgeMode()'><span class='opt-title'>🎬 Judge Mode</span><span class='opt-sub'>See what other choices could have changed</span></button>");
 }
 
 function goalsApp() {
@@ -743,7 +875,7 @@ function chatWith(name) {
     const npc = state.npcs.find(item => item.name === name);
     if (!npc) return;
     const meetings = Number(state.npcMeetings[name] || 0);
-    let extra = "<p style='color:var(--muted);font-size:12px;margin-bottom:10px;'>" + npc.role + " · " + npc.trait + " · " + meetings + " conversations</p>";
+    let extra = "<p style='color:var(--muted);font-size:12px;margin-bottom:10px;'>" + npc.role + " · " + npc.trait + " · " + meetings + " conversations</p><p class='modal-intro'>“" + npcReaction(npc) + "”</p>" + npcMemoryList(npc);
     if (npc.role === "mentor") extra += "<button class='option' onclick='mentorAdvice()'>🧭 Ask for advice (+education)</button>";
     if (npc.role === "banker") extra += "<button class='option' onclick='bankTip()'>🏦 Ask for a money tip</button>";
     if (npc.role === "investor") extra += "<button class='option' onclick='investorPitch()'>💡 Pitch an idea</button>";
@@ -799,6 +931,7 @@ function chatAction(name, amount) {
     if (npc) {
         npc.relationship = clamp(npc.relationship + amount, 0, 100);
         state.npcMeetings[name] = Number(state.npcMeetings[name] || 0) + 1;
+        rememberNpc(name, amount >= 10 ? "You gave me a thoughtful gift." : amount > 0 ? "You took time to talk to me." : "You were rude to me.", amount > 0 ? "positive" : "negative");
     }
     addFeed("You chatted with " + name + ".");
     updateAchievements(); closeModal(); render(); saveGame();
@@ -921,7 +1054,7 @@ function demoMode() {
     state.feed = []; state.history = []; state.currentSection = "places";
     state.weather = "clear"; state.milestones = [];
     state.goals = ["health","study","friend"]; state.achievements = ["first_step","good_friend","hard_worker"];
-    state.npcMeetings = {}; state.decisions = [{day:10,title:"A Chance to Earn",choice:"Ask a friend to join"}];
+    state.npcMeetings = {}; state.npcMemories = { "Albert Lalu": [{day:5,text:"You helped me with the school project.",sentiment:"positive"},{day:10,text:"You invited a friend to join an earning opportunity.",sentiment:"positive"}], "Harshith Pradeep": [{day:10,text:"You made room for your friends in an important opportunity.",sentiment:"positive"}] }; state.decisions = [{day:5,title:"An Unexpected Opportunity",choice:"Help your friend",id:"school_opportunity"},{day:10,title:"A Chance to Earn",choice:"Ask a friend to join",id:"money_choice"}];
     state.decisionFlags = {school_opportunity:true,money_choice:true};
     state.timeline = [
         {day:1,title:"Life begins",detail:"You started with AED 100."},
@@ -938,6 +1071,7 @@ function demoMode() {
     updateLocation(); render();
     addFeed("DEMO MODE: This scenario is designed to show the core LIFE experience.", "good");
     addTimeline("Demo scenario", "A judge-ready snapshot of a life already in progress.");
+    openJudgeMode();
 }
 document.addEventListener("DOMContentLoaded", () => {
     const hasSave = !!localStorage.getItem(SAVE_KEY);
