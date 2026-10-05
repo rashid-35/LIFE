@@ -197,7 +197,10 @@ function loadGame() {
         const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
         if (!saved || !saved.name) return false;
         Object.assign(state, saved);
-        state.stats = { ...state.stats };
+        state.startingCountry = state.startingCountry || state.country || "United Arab Emirates";
+        state.maxDebt = Number.isFinite(Number(state.maxDebt)) ? Number(state.maxDebt) : 500;
+        state.stats = { health: 100, energy: 100, hunger: 100, hydration: 100, hygiene: 100, mood: 80, ...state.stats };
+        state.skills = { education: 0, social: 0, fitness: 0, work: 0, ...state.skills };
         state.skills = { ...state.skills };
         state.groceries = { meals: 0, drinks: 0, ...state.groceries };
         state.goals = Array.isArray(state.goals) ? state.goals : [];
@@ -228,9 +231,17 @@ function loadGame() {
             trait: npc.trait || NPC_TRAITS[idx % NPC_TRAITS.length],
             relationship: clamp(Number(npc.relationship) || 0, 0, 100),
         }));
+        if (!state.npcs.length) {
+            state.npcs = NPC_DATA.map(([name, role, emoji], idx) => ({
+                name, emoji, role,
+                trait: NPC_TRAITS[idx % NPC_TRAITS.length],
+                relationship: 20 + Math.floor(Math.random() * 40),
+            }));
+        }
         state.location = PLACES.some(place => place.id === state.location) ? state.location : "home";
         state.currentSection = ["places", "activities", "travel"].includes(state.currentSection) ? state.currentSection : "places";
         state.weather = WEATHER[state.weather] ? state.weather : "clear";
+        document.getElementById("landing").classList.add("hidden");
         document.getElementById("intro").classList.add("hidden");
         document.getElementById("game").classList.remove("hidden");
         updateLocation();
@@ -522,7 +533,7 @@ function startGame() {
     state.startingCountry = state.country;
     state.age = clamp(parseInt(document.getElementById("age").value, 10) || 17, 16, 80);
     state.personality = document.getElementById("personality").value;
-    state.day = 1; state.hour = 7; state.minute = 30; state.cash = 100; state.debt = 0;
+    state.day = 1; state.hour = 7; state.minute = 30; state.cash = 100; state.debt = 0; state.maxDebt = 500;
     state.groceries = { meals: 7, drinks: 10 }; state.location = "home"; state.ended = false;
     state.stats = { health: 100, energy: 100, hunger: 100, hydration: 100, hygiene: 100, mood: 80 };
     state.skills = { education: 0, social: 0, fitness: 0, work: 0 };
@@ -1051,7 +1062,7 @@ function renderStats() {
         state.stats[key] = clamp(Number(state.stats[key]), 0, 100);
     });
     let html = rows.map(([key, label]) => "<div class='stat-row'><span class='label'>" + label + "</span><div class='stat-bar'><div class='fill " + key + "' style='width:" + state.stats[key] + "%'></div></div></div>").join("");
-    html += "<div style='margin-top:14px;border-top:1px solid var(--line);padding-top:12px;'>" + ["education", "social", "fitness", "work"].map(key => "<div class='stat-row'><span class='label'>" + key[0].toUpperCase() + key.slice(1) + "</span><div class='stat-bar'><div class='fill " + key + "' style='width:" + state.skills[key] + "%'></div></div></div>").join("") + "</div>";
+    html += "<div style='margin-top:14px;border-top:1px solid var(--line);padding-top:12px;'>" + ["education", "social", "fitness", "work"].map(key => "<div class='stat-row'><span class='label'>" + key[0].toUpperCase() + key.slice(1) + "</span><div class='stat-bar'><div class='fill " + key + "' style='width:" + clamp(Number(state.skills[key]) || 0, 0, 100) + "%'></div></div></div>").join("") + "</div>";
     document.getElementById("stats").innerHTML = html;
     const warnings = [];
     if (state.stats.energy < 25) warnings.push("You are running low on energy.");
@@ -1124,6 +1135,8 @@ function demoMode() {
     state.feed = []; state.history = []; state.currentSection = "places";
     state.weather = "clear"; state.milestones = [];
     state.goals = ["health","study","friend"]; state.achievements = ["first_step","good_friend","hard_worker"];
+    state.daily = { activities: 4, spent: 145, earned: 280 };
+    state.lastSummary = "Demo snapshot: 20 days into a life already in progress.";
     state.npcMeetings = {}; state.npcMemories = { "Albert Lalu": [{day:5,text:"You helped me with the school project.",sentiment:"positive"},{day:10,text:"You invited a friend to join an earning opportunity.",sentiment:"positive"}], "Harshith Pradeep": [{day:10,text:"You made room for your friends in an important opportunity.",sentiment:"positive"}] }; state.decisions = [{day:5,title:"An Unexpected Opportunity",choice:"Help your friend",id:"school_opportunity"},{day:10,title:"A Chance to Earn",choice:"Ask a friend to join",id:"money_choice"}];
     state.decisionFlags = {school_opportunity:true,money_choice:true};
     state.timeline = [
