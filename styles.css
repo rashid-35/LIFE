@@ -652,174 +652,216 @@ button {
 }
 
 
-/* LIFE landing page */
+/* LIFE cover page */
 .landing-screen {
   min-height: 100vh;
+  position: relative;
   display: grid;
   place-items: center;
-  padding: 32px 18px;
-  background: var(--bg);
+  overflow: hidden;
+  padding: 34px 18px;
+  background: #151914;
+  color: #f4f0e7;
 }
 
-.landing-inner {
-  width: min(760px, 100%);
+.cover-glow {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100,115,77,.22), transparent 68%);
+  top: -180px;
+  right: -120px;
+  pointer-events: none;
+}
+
+.cover-inner {
+  position: relative;
+  z-index: 1;
+  width: min(940px, 100%);
+  padding: 54px 62px 48px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(27,31,25,.88);
+  box-shadow: 0 24px 70px rgba(0,0,0,.35);
+}
+
+.cover-brand {
   text-align: center;
-  padding: 54px 48px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  box-shadow: 10px 10px 0 rgba(87, 61, 40, .09);
 }
 
-.landing-logo {
-  color: var(--accent);
-  font: 900 clamp(64px, 12vw, 108px)/.9 Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .12em;
-  margin-left: .12em;
+.cover-logo {
+  color: #f5f1e8;
+  font: 900 clamp(76px, 13vw, 132px)/.82 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .16em;
+  margin-left: .16em;
 }
 
-.landing-rule {
-  width: 70px;
+.cover-logo-line {
+  width: 74px;
   height: 3px;
-  margin: 20px auto 16px;
-  background: var(--green);
+  margin: 22px auto 15px;
+  background: #64734d;
 }
 
-.landing-kicker {
-  color: var(--muted);
+.cover-tagline {
+  color: #aeb4a5;
   font: 700 11px Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .18em;
+  letter-spacing: .22em;
 }
 
-.landing-inner h1 {
-  margin-top: 25px;
-  font-size: clamp(27px, 5vw, 40px);
-  font-weight: 700;
+.cover-content {
+  max-width: 760px;
+  margin: 46px auto 0;
+  text-align: center;
 }
 
-.landing-copy {
-  width: min(600px, 100%);
-  margin: 12px auto 0;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.7;
+.cover-kicker {
+  color: #84916f;
+  font: 700 10px Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .2em;
 }
 
-.landing-details {
+.cover-content h1 {
+  margin-top: 13px;
+  font: 700 clamp(30px, 5vw, 48px)/1.12 Georgia, "Times New Roman", serif;
+  color: #f5f1e8;
+}
+
+.cover-content h1 em {
+  color: #aeb4a5;
+  font-weight: 400;
+}
+
+.cover-copy {
+  max-width: 650px;
+  margin: 15px auto 0;
+  color: #aeb4a5;
+  font: 15px/1.7 Georgia, "Times New Roman", serif;
+}
+
+.cover-stats {
   display: flex;
   justify-content: center;
-  gap: 0;
-  margin: 32px auto;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  margin: 34px auto 24px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  border-bottom: 1px solid rgba(255,255,255,.12);
 }
 
-.landing-details div {
-  min-width: 120px;
-  padding: 14px 24px;
-  border-right: 1px solid var(--line);
+.cover-stats div {
+  min-width: 135px;
+  padding: 15px 22px;
+  border-right: 1px solid rgba(255,255,255,.12);
 }
 
-.landing-details div:last-child {
+.cover-stats div:last-child {
   border-right: 0;
 }
 
-.landing-details strong,
-.landing-details span {
+.cover-stats strong,
+.cover-stats span {
   display: block;
 }
 
-.landing-details strong {
-  color: var(--accent);
-  font: 800 25px Inter, ui-sans-serif, system-ui, sans-serif;
+.cover-stats strong {
+  color: #f5f1e8;
+  font: 800 26px Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
-.landing-details span {
-  margin-top: 2px;
-  color: var(--muted);
-  font: 10px 700 Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+.cover-stats span {
+  margin-top: 3px;
+  color: #84916f;
+  font: 700 9px Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .14em;
 }
 
-.landing-acts {
+.cover-acts {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   text-align: left;
-  margin-bottom: 24px;
 }
 
-.landing-acts > div {
-  padding: 16px;
-  background: var(--panel-dark);
-  border: 1px solid var(--line);
+.cover-acts > div {
+  padding: 17px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.035);
 }
 
-.landing-acts span {
-  color: var(--green);
+.cover-acts span {
+  color: #84916f;
   font: 700 10px Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .1em;
+  letter-spacing: .12em;
 }
 
-.landing-acts strong {
+.cover-acts strong {
   display: block;
-  margin-top: 3px;
-  font-size: 18px;
+  margin-top: 4px;
+  color: #f5f1e8;
+  font: 700 18px Georgia, "Times New Roman", serif;
 }
 
-.landing-acts p {
+.cover-acts p {
   margin-top: 5px;
-  color: var(--muted);
+  color: #9fa69a;
   font: 12px/1.5 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.cover-start {
+  margin-top: 24px;
 }
 
 .landing-start,
 .landing-continue {
   width: 100%;
-  padding: 13px 18px;
-  border-radius: 3px;
+  padding: 14px 18px;
+  border-radius: 2px;
   font: 700 12px Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: .08em;
+  letter-spacing: .1em;
 }
 
 .landing-start {
-  border: 0;
-  background: var(--green);
-  color: #fffaf1;
+  border: 1px solid #64734d;
+  background: #64734d;
+  color: #fff;
 }
 
 .landing-start:hover {
-  background: #53603f;
+  background: #74845a;
 }
 
 .landing-continue {
   margin-top: 9px;
-  border: 1px solid var(--line);
-  background: var(--soft);
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.05);
+  color: #f5f1e8;
 }
 
 .landing-continue:hover {
-  background: #e2ceb0;
+  background: rgba(255,255,255,.09);
 }
 
 .landing-note {
   margin-top: 13px;
-  color: var(--muted);
+  color: #858c81;
   font: 11px Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (max-width: 620px) {
-  .landing-inner {
-    padding: 40px 22px;
+@media (max-width: 650px) {
+  .cover-inner {
+    padding: 42px 22px 34px;
   }
 
-  .landing-acts {
+  .cover-content {
+    margin-top: 36px;
+  }
+
+  .cover-acts {
     grid-template-columns: 1fr;
   }
 
-  .landing-details div {
+  .cover-stats div {
     min-width: 0;
     flex: 1;
-    padding: 12px 8px;
+    padding: 13px 7px;
   }
 }
