@@ -787,8 +787,62 @@ function judgeReportHtml() {
         "<h3 class='report-heading'>🔀 ALL POSSIBLE DECISION PATHS</h3>" + decisionHtml + reportCardHtml();
 }
 
+function judgeGuideHtml() {
+    return "<div class='judge-nav'>" +
+        "<button class='judge-nav-btn' onclick='openJudgeOverview()'>📖 Overview</button>" +
+        "<button class='judge-nav-btn' onclick='openJudgeOutcomes()'>🔀 Outcomes</button>" +
+        "<button class='judge-nav-btn' onclick='openJudgeReport()'>📋 Report Card</button>" +
+        "<button class='judge-nav-btn' onclick='openJudgeFeatures()'>✨ Features</button>" +
+        "<button class='judge-nav-btn' onclick='openJudgeTimeline()'>🕒 Timeline</button>" +
+        "</div>";
+}
+
+function judgeShell(title, content) {
+    showModal("🎬 JUDGE DEMO · " + title, judgeGuideHtml() + content + "<button class='primary' onclick='openJudgeMode()'>← JUDGE HOME</button>");
+}
+
+function openJudgeOverview() {
+    judgeShell("OVERVIEW", "<p class='modal-intro'>LIFE is a 30-day choice-based life simulator. Every decision can affect money, health, skills, relationships, opportunities and the final outcome.</p>" +
+        "<div class='judge-feature-grid'>" +
+        "<div><strong>30 DAYS</strong><span>Experience two stages: school life and adult life.</span></div>" +
+        "<div><strong>EVERY CHOICE MATTERS</strong><span>Decisions change different areas of your life.</span></div>" +
+        "<div><strong>NO SINGLE ENDING</strong><span>Your final outcome depends on how you lived.</span></div>" +
+        "<div><strong>YOUR LIFE, YOUR TRADE-OFFS</strong><span>Improving one area can mean sacrificing another.</span></div></div>");
+}
+
+function openJudgeFeatures() {
+    judgeShell("ALL FEATURES", "<div class='judge-feature-list'>" +
+        "<div>👤 <strong>Character System</strong><span>Choose your age, country and personality.</span></div>" +
+        "<div>📚 <strong>School Life</strong><span>Attend classes, study, socialize and use the library.</span></div>" +
+        "<div>💼 <strong>Adult Life & Jobs</strong><span>Unlock careers based on education and reputation.</span></div>" +
+        "<div>❤️ <strong>Health & Daily Needs</strong><span>Manage health, energy, hunger, hydration, hygiene and mood.</span></div>" +
+        "<div>💰 <strong>Money & Debt</strong><span>Earn, spend, save and manage loans.</span></div>" +
+        "<div>🤝 <strong>NPC Relationships</strong><span>Build relationships with individual characters.</span></div>" +
+        "<div>🧠 <strong>NPC Memory</strong><span>Characters remember specific things you did and can reference them later.</span></div>" +
+        "<div>🏆 <strong>Achievements & Goals</strong><span>Complete milestones throughout your month.</span></div>" +
+        "<div>🌍 <strong>Travel</strong><span>Spend money to experience different countries.</span></div>" +
+        "<div>🕒 <strong>Life Timeline</strong><span>Important actions and moments are recorded.</span></div>" +
+        "<div>🔀 <strong>Decision Moments</strong><span>Major moments offer multiple paths with different consequences.</span></div>" +
+        "<div>🏁 <strong>Multiple Outcomes</strong><span>Scholar, Career Builder, People Person, Athlete, Explorer, Balanced Life and more.</span></div></div>");
+}
+
+function openJudgeOutcomes() {
+    judgeShell("OUTCOMES", "<p class='modal-intro'>These are the major outcomes LIFE can reach. Your final statistics, relationships, money and choices determine which path wins.</p>" +
+        "<div class='outcome-paths'>" +
+        Object.entries({{"⚠️ The Hard Lesson":"Debt and financial pressure shaped your month.","🎓 The Scholar":"Learning and discipline became the center of your life.","💼 The Career Builder":"Work, experience, income and opportunity became your focus.","🤝 The People Person":"Relationships became your strongest investment.","🏃 The Athlete":"Fitness, energy and wellbeing became your priority.","🌍 The Explorer":"You chose experiences beyond what was familiar.","🌱 The Balanced Life":"You made room for health, learning and people.","🧭 The Missed Opportunities":"Your month left important areas underdeveloped.","⭐ The All-Rounder":"You built a varied life without one area taking over."}).map(([name,desc]) => "<div class='outcome-path'><strong>"+name+"</strong><p>"+desc+"</p></div>").join("") + "</div>");
+}
+
+function openJudgeReport() {
+    judgeShell("REPORT CARD", reportCardHtml() + "<div class='outcome-banner'><span>FINAL OUTCOME</span><strong>" + getLifeOutcome()[0] + "</strong></div><p class='modal-intro'>" + getLifeOutcome()[1] + "</p>");
+}
+
+function openJudgeTimeline() {
+    const items = state.timeline.length ? state.timeline.slice().reverse().map(item => "<div class='timeline-item'><div class='timeline-dot'>•</div><div><strong>Day "+item.day+" — "+item.title+"</strong><br><span>"+item.detail+"</span></div></div>").join("") : "<p class='modal-intro'>Your timeline will appear here during a real run.</p>";
+    judgeShell("TIMELINE", "<div class='timeline'>"+items+"</div>");
+}
+
 function openJudgeMode() {
-    showModal("🎬 JUDGE MODE", judgeReportHtml() + "<button class='primary' onclick='closeModal()'>BACK TO LIFE</button>");
+    showModal("🎬 JUDGE DEMO", judgeGuideHtml() + judgeReportHtml() + "<button class='primary' onclick='closeModal()'>CLOSE JUDGE DEMO</button>");
 }
 
 function endGame(reason) {
@@ -1042,6 +1096,11 @@ function renderMainGrid() {
 }
 
 function demoMode() {
+    const password = window.prompt("JUDGE DEMO PASSWORD");
+    if (password !== "shahrashid35") {
+        if (password !== null) addFeed("Judge Demo access denied.", "bad");
+        return;
+    }
     clearSave();
     state.name = "Alex";
     state.country = "United Arab Emirates";
