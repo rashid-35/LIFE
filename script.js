@@ -155,9 +155,7 @@ const NPC_DATA = [
     ["Yahya bin Navas", "mentor", "😌"],
     ["Omar Aslam", "banker", "🤗"],
     ["Mohammed Nadeem", "investor", "🧑‍💼"],
-    ["Isaac Newton", "rival", "🧐"],
     ["Ahmed Raees", "entrepreneur", "💡"],
-    ["Jishan Mohammed", "social friend", "🎉"],
     ["Saud.A", "academic", "📚"],
     ["Sultan", "football friend", "⚽"],
     ["Hyder", "quiet friend", "🙂"]
