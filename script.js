@@ -842,6 +842,7 @@ function openJudgeTimeline() {
 }
 
 function openJudgeMode() {
+    if (!unlockJudgeDemo()) return;
     showModal("🎬 JUDGE DEMO", judgeGuideHtml() + judgeReportHtml() + "<button class='primary' onclick='closeModal()'>CLOSE JUDGE DEMO</button>");
 }
 
@@ -1095,12 +1096,21 @@ function renderMainGrid() {
     }
 }
 
-function demoMode() {
+let judgeDemoUnlocked = false;
+
+function unlockJudgeDemo() {
+    if (judgeDemoUnlocked) return true;
     const password = window.prompt("JUDGE DEMO PASSWORD");
     if (password !== "shahrashid35") {
         if (password !== null) addFeed("Judge Demo access denied.", "bad");
-        return;
+        return false;
     }
+    judgeDemoUnlocked = true;
+    return true;
+}
+
+function demoMode() {
+    if (!unlockJudgeDemo()) return;
     clearSave();
     state.name = "Alex";
     state.country = "United Arab Emirates";
