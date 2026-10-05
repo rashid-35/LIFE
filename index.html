@@ -10,40 +10,48 @@
 <body>
 
 <section id="landing" class="landing-screen">
-    <div class="landing-inner">
-        <div class="landing-logo">LIFE</div>
-        <div class="landing-rule"></div>
-        <p class="landing-kicker">EVERY CHOICE HAS A COST.</p>
-
-        <h1>A month of choices.</h1>
-        <p class="landing-copy">
-            LIFE is a 30-day life simulator where ordinary decisions shape how your story turns out.
-            Study, work, save money, spend time with friends, take care of yourself, travel, and deal with whatever life throws at you.
-        </p>
-
-        <div class="landing-details">
-            <div><strong>30</strong><span>Days</span></div>
-            <div><strong>2</strong><span>Acts</span></div>
-            <div><strong>∞</strong><span>Choices</span></div>
+    <div class="cover-glow"></div>
+    <div class="cover-inner">
+        <div class="cover-brand">
+            <div class="cover-logo">LIFE</div>
+            <div class="cover-logo-line"></div>
+            <div class="cover-tagline">EVERY CHOICE HAS A COST.</div>
         </div>
 
-        <div class="landing-acts">
-            <div>
-                <span>ACT I</span>
-                <strong>School Life</strong>
-                <p>Balance classes, friends, health and your time.</p>
+        <div class="cover-content">
+            <p class="cover-kicker">A 30-DAY LIFE SIMULATOR</p>
+            <h1>A month of choices.<br><em>A lifetime of consequences.</em></h1>
+            <p class="cover-copy">
+                Study. Work. Spend. Save. Travel. Build relationships.
+                Take care of yourself. Every decision moves your story forward.
+            </p>
+
+            <div class="cover-stats">
+                <div><strong>30</strong><span>DAYS</span></div>
+                <div><strong>2</strong><span>ACTS</span></div>
+                <div><strong>∞</strong><span>CHOICES</span></div>
             </div>
-            <div>
-                <span>ACT II</span>
-                <strong>Adult Life</strong>
-                <p>Choose your direction, earn money and build your future.</p>
+
+            <div class="cover-acts">
+                <div>
+                    <span>ACT I</span>
+                    <strong>School Life</strong>
+                    <p>Balance classes, friends, health and time.</p>
+                </div>
+                <div>
+                    <span>ACT II</span>
+                    <strong>Adult Life</strong>
+                    <p>Build your future, earn money and choose your path.</p>
+                </div>
             </div>
+
+            <div class="cover-start">
+                <button class="landing-start" onclick="showSetup()">START A NEW LIFE</button>
+                <button id="landingContinue" class="landing-continue hidden" onclick="continueGame()">CONTINUE SAVED LIFE</button>
+            </div>
+
+            <p class="landing-note">Start with AED 100. There is no perfect path.</p>
         </div>
-
-        <button class="landing-start" onclick="showSetup()">START A NEW LIFE</button>
-        <button id="landingContinue" class="landing-continue hidden" onclick="continueGame()">CONTINUE SAVED LIFE</button>
-
-        <p class="landing-note">Start with AED 100. There is no perfect path.</p>
     </div>
 </section>
 
