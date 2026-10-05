@@ -203,6 +203,13 @@ function loadGame() {
     }
 }
 
+function showSetup() {
+    document.getElementById("landing").classList.add("hidden");
+    document.getElementById("intro").classList.remove("hidden");
+    const nameInput = document.getElementById("name");
+    if (nameInput) nameInput.focus();
+}
+
 function continueGame() {
     if (!loadGame()) localStorage.removeItem(SAVE_KEY);
 }
@@ -522,8 +529,11 @@ function handleModalClick(event) {
 function restartGame() {
     closeModal();
     state.ended = false;
+    clearSave();
     document.getElementById("game").classList.add("hidden");
-    document.getElementById("intro").classList.remove("hidden");
+    document.getElementById("intro").classList.add("hidden");
+    document.getElementById("landing").classList.remove("hidden");
+    document.getElementById("landingContinue").classList.add("hidden");
 }
 
 function phone() {
@@ -669,7 +679,9 @@ function renderMainGrid() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("continueButton").classList.toggle("hidden", !localStorage.getItem(SAVE_KEY));
+    const hasSave = !!localStorage.getItem(SAVE_KEY);
+    document.getElementById("continueButton").classList.toggle("hidden", !hasSave);
+    document.getElementById("landingContinue").classList.toggle("hidden", !hasSave);
     document.getElementById("name").focus();
     document.getElementById("modal").addEventListener("click", handleModalClick);
     document.addEventListener("keydown", event => {
