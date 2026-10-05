@@ -27,6 +27,9 @@ const state = {
     ended: false,
     achievements: [],
     npcMeetings: {},
+    decisions: [],
+    decisionFlags: {},
+    timeline: [],
     totalEarned: 0,
     totalSpent: 0,
 };
@@ -206,6 +209,9 @@ function loadGame() {
         state.milestones = Array.isArray(state.milestones) ? state.milestones : [];
         state.achievements = Array.isArray(state.achievements) ? state.achievements : [];
         state.npcMeetings = state.npcMeetings && typeof state.npcMeetings === "object" ? state.npcMeetings : {};
+        state.decisions = Array.isArray(state.decisions) ? state.decisions : [];
+        state.decisionFlags = state.decisionFlags && typeof state.decisionFlags === "object" ? state.decisionFlags : {};
+        state.timeline = Array.isArray(state.timeline) ? state.timeline : [];
         state.totalEarned = Number(state.totalEarned) || 0;
         state.totalSpent = Number(state.totalSpent) || 0;
         state.npcs = (Array.isArray(state.npcs) ? state.npcs : []).map((npc, idx) => ({
@@ -257,6 +263,79 @@ const ACHIEVEMENTS = [
     { id: "scholar", title: "Scholar", detail: "Reach 60 education.", test: () => state.skills.education >= 60 },
     { id: "balanced_life", title: "Balanced Life", detail: "Finish with health and mood at 70 or higher.", test: () => state.ended && state.stats.health >= 70 && state.stats.mood >= 70 },
 ];
+
+const DECISION_MOMENTS = [
+    {
+        id: "school_opportunity",
+        day: 5,
+        title: "An Unexpected Opportunity",
+        text: "A friend asks you to help with an important school project. You have studying to do too.",
+        options: [
+            ["Help your friend", "Social +8 • Education -2 • Relationship +10", () => { state.skills.social += 8; state.skills.education = Math.max(0, state.skills.education - 2); changeNpc(10); }],
+            ["Study for yourself", "Education +8 • Social -2", () => { state.skills.education += 8; state.skills.social = Math.max(0, state.skills.social - 2); }],
+            ["Try to do both", "Education +4 • Social +4 • Energy -8", () => { state.skills.education += 4; state.skills.social += 4; state.stats.energy = clamp(state.stats.energy - 8, 0, 100); }]
+        ]
+    },
+    {
+        id: "money_choice",
+        day: 10,
+        title: "A Chance to Earn",
+        text: "Someone offers you a quick paid task, but it will take time away from your plans.",
+        options: [
+            ["Take the opportunity", "Earn AED 45 • Work +6 • Energy -10", () => { state.cash += 45; state.totalEarned += 45; state.skills.work += 6; state.stats.energy = clamp(state.stats.energy - 10, 0, 100); }],
+            ["Focus on your goals", "Education +5 • Mood +3", () => { state.skills.education += 5; state.stats.mood = clamp(state.stats.mood + 3, 0, 100); }],
+            ["Ask a friend to join", "Social +6 • Work +3 • Earn AED 20", () => { state.skills.social += 6; state.skills.work += 3; state.cash += 20; state.totalEarned += 20; changeNpc(6); }]
+        ]
+    },
+    {
+        id: "future_choice",
+        day: 20,
+        title: "What Matters Most?",
+        text: "Adult life has started. You have limited time and money. What do you prioritize?",
+        options: [
+            ["Build your career", "Work +8 • Education +3 • Mood -3", () => { state.skills.work += 8; state.skills.education += 3; state.stats.mood = clamp(state.stats.mood - 3, 0, 100); }],
+            ["Invest in relationships", "Social +8 • Mood +8 • Relationship +10", () => { state.skills.social += 8; state.stats.mood = clamp(state.stats.mood + 8, 0, 100); changeNpc(10); }],
+            ["Invest in yourself", "Fitness +6 • Health +5 • Mood +5", () => { state.skills.fitness += 6; state.stats.health = clamp(state.stats.health + 5, 0, 100); state.stats.mood = clamp(state.stats.mood + 5, 0, 100); }]
+        ]
+    }
+];
+
+function changeNpc(amount) {
+    const npc = state.npcs.slice().sort((a,b) => b.relationship - a.relationship)[0];
+    if (npc) npc.relationship = clamp(npc.relationship + amount, 0, 100);
+}
+
+function addTimeline(title, detail) {
+    state.timeline.push({ day: state.day, title, detail });
+    state.timeline = state.timeline.slice(-30);
+}
+
+function maybeDecisionMoment() {
+    const moment = DECISION_MOMENTS.find(item => item.day === state.day && !state.decisionFlags[item.id]);
+    if (!moment || state.ended) return;
+    state.decisionFlags[moment.id] = true;
+    showDecision(moment);
+}
+
+function showDecision(moment) {
+    const buttons = moment.options.map((option, index) =>
+        "<button class='decision-card' onclick='chooseDecision(" + JSON.stringify(moment.id) + "," + index + ")'>" +
+        "<strong>" + option[0] + "</strong><span>" + option[1] + "</span></button>"
+    ).join("");
+    showModal("⚖️ " + moment.title, "<p class='decision-text'>" + moment.text + "</p><div class='decision-options'>" + buttons + "</div>");
+}
+
+function chooseDecision(id, index) {
+    const moment = DECISION_MOMENTS.find(item => item.id === id);
+    if (!moment || !moment.options[index]) return;
+    const option = moment.options[index];
+    option[2]();
+    state.decisions.push({ day: state.day, title: moment.title, choice: option[0] });
+    addTimeline(moment.title, option[0] + ". " + option[1]);
+    addFeed("Decision: " + moment.title + " — " + option[0] + ".", "good");
+    closeModal();
+    updateGoals(); updateAchievements(); render(); saveGame();
+}
 
 function updateAchievements() {
     ACHIEVEMENTS.forEach(achievement => {
@@ -348,6 +427,7 @@ function advanceDay() {
     }
     updateGoals();
     updateAchievements();
+    maybeDecisionMoment();
 
     state.weather = Object.keys(WEATHER)[Math.floor(Math.random() * Object.keys(WEATHER).length)];
     if (state.location === "school" && state.day > 15) {
@@ -395,6 +475,9 @@ function startGame() {
     state.lastSummary = "";
     state.achievements = [];
     state.npcMeetings = {};
+    state.decisions = [];
+    state.decisionFlags = {};
+    state.timeline = [{ day: 1, title: "Life begins", detail: "You started a new life with AED 100." }];
     state.totalEarned = 0;
     state.totalSpent = 0;
     state.npcs = NPC_DATA.map(([name, role, emoji], idx) => ({
@@ -499,6 +582,7 @@ function doActivity(id) {
     addMinutes(activity.time);
     addFeed(activity.name + " done.");
 
+    addTimeline(activity.name, "You chose to " + activity.name.toLowerCase() + ".");
     if (["socialize", "meet", "cafe_meet"].includes(id)) {
         const npc = state.npcs[Math.floor(Math.random() * state.npcs.length)];
         if (npc) npc.relationship = clamp(npc.relationship + 5, 0, 100);
@@ -541,6 +625,7 @@ function travelTo(country) {
     if (!window.confirm("Travel to " + country + " for " + money(trip[2]) + "?")) return;
     state.cash -= trip[2]; state.country = country; addMinutes(240);
     addMilestone("Travelled", "You visited another country.");
+    addTimeline("Travelled to " + country, "You spent " + money(trip[2]) + " to experience a new country.");
     addFeed("You traveled to " + country + ".", "good");
     render();
     saveGame();
@@ -553,23 +638,35 @@ function checkGameOver() {
     else if (state.stats.mood >= 90 && state.stats.health >= 80) addMilestone("Good health", "Your health and mood are both high.");
 }
 
+function getLifeOutcome() {
+    const score = state.stats.health + state.stats.mood + state.skills.education + state.skills.social + state.skills.fitness + state.skills.work + Math.min(state.cash, 300) / 3;
+    if (state.debt >= 250) return ["⚠️ The Hard Lesson", "Money and pressure shaped your month. Your choices show how quickly small costs can grow."];
+    if (state.skills.education >= 70 && state.skills.education >= state.skills.social && state.skills.education >= state.skills.fitness) return ["🎓 The Scholar", "You built your future around learning and discipline."];
+    if (state.skills.work >= 60 && state.cash >= 200) return ["💼 The Career Builder", "You turned limited time into experience, income and opportunity."];
+    if (state.skills.social >= 65 && getReputation() >= 65) return ["🤝 The People Person", "Your strongest investment was the people around you."];
+    if (state.skills.fitness >= 60 && state.stats.health >= 75) return ["🏃 The Athlete", "You prioritized energy, fitness and taking care of yourself."];
+    if (state.country !== state.startingCountry && state.country) return ["🌍 The Explorer", "You chose experiences and stepped beyond what was familiar."];
+    if (state.stats.health >= 70 && state.stats.mood >= 70 && state.skills.social >= 35 && state.skills.education >= 35) return ["🌱 The Balanced Life", "You found a way to make room for health, learning and people."];
+    if (score < 250) return ["🧭 The Missed Opportunities", "Your month was full of choices that could have gone differently. That is part of LIFE."];
+    return ["⭐ The All-Rounder", "You built a varied life without letting one area completely take over."];
+}
+
+function whatIfSummary() {
+    if (!state.decisions.length) return "You made no major recorded decisions.";
+    return state.decisions.slice(-3).map(item => "<div class='feed-item info'><strong>Day " + item.day + " — " + item.title + "</strong><br>You chose <strong>" + item.choice + "</strong>.<br><span style='color:var(--muted)'>A different choice could have changed another part of your life.</span></div>").join("");
+}
+
 function endGame(reason) {
     if (state.ended) return;
     state.ended = true;
     clearSave();
-    const reputation = getReputation();
-    let verdict = "You made it through the month.";
-    if (state.debt >= 250) verdict = "Money became harder to manage than you expected.";
-    else if (state.stats.health >= 80 && state.stats.mood >= 75) verdict = "You kept yourself in good shape.";
-    else if (reputation >= 70) verdict = "Your friends made the month better.";
-    else if (state.skills.fitness >= state.skills.education) verdict = "You spent the month staying active.";
-    else if (state.cash >= 200) verdict = "You managed your money well.";
     updateAchievements();
+    const outcome = getLifeOutcome();
     const bestFriend = state.npcs.slice().sort((a,b) => b.relationship - a.relationship)[0];
     const weakest = Object.entries(state.skills).sort((a,b) => a[1] - b[1])[0];
     const strongest = Object.entries(state.skills).sort((a,b) => b[1] - a[1])[0];
     const report = "<p>" + (reason || "Thirty days are up. Here's how things turned out.") + "</p>" +
-        "<p style='margin-top:14px'><strong>" + verdict + "</strong></p>" +
+        "<div class='outcome-banner'><span>" + outcome[0] + "</span><strong>" + outcome[1] + "</strong></div>" +
         "<div class='report-grid' style='margin-top:16px'>" +
         "<div><span>Cash</span><strong>" + money(state.cash) + "</strong></div>" +
         "<div><span>Debt</span><strong>" + money(state.debt) + "</strong></div>" +
@@ -577,12 +674,13 @@ function endGame(reason) {
         "<div><span>Fitness</span><strong>" + Math.round(state.skills.fitness) + "</strong></div>" +
         "<div><span>Social</span><strong>" + Math.round(state.skills.social) + "</strong></div>" +
         "<div><span>Work</span><strong>" + Math.round(state.skills.work) + "</strong></div></div>" +
-        "<p style='margin-top:14px'><strong>Your strongest area:</strong> " + strongest[0] + "<br><strong>Needs the most work:</strong> " + weakest[0] + "<br><strong>Closest relationship:</strong> " + (bestFriend ? bestFriend.name + " (" + bestFriend.relationship + "%)" : "None") + "</p>" +
-        "<p style='margin-top:14px'><strong>Goals:</strong> " + state.goals.length + " / " + GOALS.length + "<br><strong>Achievements:</strong> " + state.achievements.length + " / " + ACHIEVEMENTS.length + "<br><strong>Memories:</strong> " + state.milestones.length + "<br><strong>Total earned:</strong> " + money(state.totalEarned || 0) + "<br><strong>Total spent:</strong> " + money(state.totalSpent || 0) + "</p>" +
+        "<p style='margin-top:14px'><strong>Strongest:</strong> " + strongest[0] + " &nbsp; <strong>Needs work:</strong> " + weakest[0] + "<br><strong>Closest relationship:</strong> " + (bestFriend ? bestFriend.name + " (" + bestFriend.relationship + "%)" : "None") + "</p>" +
+        "<p style='margin-top:14px'><strong>Goals:</strong> " + state.goals.length + " / " + GOALS.length + " · <strong>Achievements:</strong> " + state.achievements.length + " / " + ACHIEVEMENTS.length + "<br><strong>Total earned:</strong> " + money(state.totalEarned || 0) + " · <strong>Total spent:</strong> " + money(state.totalSpent || 0) + "</p>" +
+        "<h3 class='report-heading'>✨ Your Life Timeline</h3><div class='timeline report-timeline'>" + state.timeline.slice().reverse().slice(0, 8).map(item => "<div class='timeline-item'><div class='timeline-dot'>•</div><div><strong>Day " + item.day + " — " + item.title + "</strong><br><span>" + item.detail + "</span></div></div>").join("") + "</div>" +
+        "<h3 class='report-heading'>🔀 What If?</h3>" + whatIfSummary() +
         "<button class='primary' onclick='restartGame()'>START OVER</button>";
-    showModal("🏁 Your Life Report", report);
+    showModal("🏁 YOUR LIFE REPORT", report);
 }
-
 function showModal(title, content) {
     document.getElementById("modalBox").innerHTML = "<button class='close' onclick='closeModal()' aria-label='Close'>×</button><h2>" + title + "</h2>" + content;
     document.getElementById("modal").classList.remove("hidden");
@@ -718,10 +816,10 @@ function historyModal() {
 }
 
 function memoriesModal() {
-    const html = state.milestones.length
-        ? state.milestones.map(item => "<div class='feed-item good'><strong>Day " + item.day + " — " + item.title + "</strong><br>" + item.detail + "</div>").join("")
-        : "<p>No milestones yet.</p>";
-    showModal("✨ Memories", html);
+    const timeline = state.timeline.length
+        ? state.timeline.slice().reverse().map(item => "<div class='timeline-item'><div class='timeline-dot'>•</div><div><strong>Day " + item.day + " — " + item.title + "</strong><br><span>" + item.detail + "</span></div></div>").join("")
+        : "<p>No memories yet.</p>";
+    showModal("✨ Your Life Timeline", "<p class='modal-intro'>Every choice leaves a mark.</p><div class='timeline'>" + timeline + "</div>");
 }
 
 function friendsModal() {
@@ -784,7 +882,7 @@ function renderInfo() {
     const personality = PERSONALITIES[state.personality] || PERSONALITIES.balanced;
     const completed = GOALS.filter(goal => state.goals.includes(goal.id)).length;
     const location = PLACES.find(item => item.id === state.location) || PLACES[0];
-    document.getElementById("info").innerHTML = "<div class='info-row'><span>Age</span><span class='input'>" + state.age + "</span></div><div class='info-row'><span>Personality</span><span class='input'>" + personality.label + "</span></div><div class='info-row'><span>Country</span><span class='input'>" + state.country + "</span></div><div class='info-row'><span>Location</span><span class='input'>" + location.name + "</span></div><div class='info-row'><span>Day</span><span class='input'>" + state.day + " / " + state.totalDays + "</span></div><div class='info-row'><span>Goals</span><span class='input'>" + completed + " / " + GOALS.length + "</span></div><div class='info-row'><span>Achievements</span><span class='input'>" + state.achievements.length + " / " + ACHIEVEMENTS.length + "</span></div>";
+    document.getElementById("info").innerHTML = "<div class='info-row'><span>Age</span><span class='input'>" + state.age + "</span></div><div class='info-row'><span>Personality</span><span class='input'>" + personality.label + "</span></div><div class='info-row'><span>Country</span><span class='input'>" + state.country + "</span></div><div class='info-row'><span>Location</span><span class='input'>" + location.name + "</span></div><div class='info-row'><span>Day</span><span class='input'>" + state.day + " / " + state.totalDays + "</span></div><div class='info-row'><span>Goals</span><span class='input'>" + completed + " / " + GOALS.length + "</span></div><div class='info-row'><span>Achievements</span><span class='input'>" + state.achievements.length + " / " + ACHIEVEMENTS.length + "</span></div><div class='info-row'><span>Major choices</span><span class='input'>" + state.decisions.length + "</span></div>";
 }
 
 function renderFeed() {
@@ -807,6 +905,40 @@ function renderMainGrid() {
     }
 }
 
+function demoMode() {
+    clearSave();
+    state.name = "Alex";
+    state.country = "United Arab Emirates";
+    state.startingCountry = "United Arab Emirates";
+    state.age = 18;
+    state.personality = "balanced";
+    state.day = 20; state.hour = 17; state.minute = 30;
+    state.cash = 235; state.debt = 0;
+    state.groceries = { meals: 5, drinks: 8 };
+    state.location = "home"; state.ended = false;
+    state.stats = { health: 82, energy: 68, hunger: 72, hydration: 78, hygiene: 76, mood: 84 };
+    state.skills = { education: 58, social: 52, fitness: 44, work: 47 };
+    state.feed = []; state.history = []; state.currentSection = "places";
+    state.weather = "clear"; state.milestones = [];
+    state.goals = ["health","study","friend"]; state.achievements = ["first_step","good_friend","hard_worker"];
+    state.npcMeetings = {}; state.decisions = [{day:10,title:"A Chance to Earn",choice:"Ask a friend to join"}];
+    state.decisionFlags = {school_opportunity:true,money_choice:true};
+    state.timeline = [
+        {day:1,title:"Life begins",detail:"You started with AED 100."},
+        {day:5,title:"An Unexpected Opportunity",detail:"You chose to help your friend."},
+        {day:10,title:"A Chance to Earn",detail:"You chose to ask a friend to join."},
+        {day:16,title:"Adult life",detail:"School ended and a new chapter began."}
+    ];
+    state.totalEarned = 280; state.totalSpent = 145;
+    state.npcs = NPC_DATA.map(([name, role, emoji], idx) => ({name,emoji,role,trait:NPC_TRAITS[idx % NPC_TRAITS.length],relationship:45 + (idx===0 ? 40 : idx===1 ? 25 : 0)}));
+    state.npcs[0].relationship=92; state.npcs[1].relationship=70;
+    document.getElementById("landing").classList.add("hidden");
+    document.getElementById("intro").classList.add("hidden");
+    document.getElementById("game").classList.remove("hidden");
+    updateLocation(); render();
+    addFeed("DEMO MODE: This scenario is designed to show the core LIFE experience.", "good");
+    addTimeline("Demo scenario", "A judge-ready snapshot of a life already in progress.");
+}
 document.addEventListener("DOMContentLoaded", () => {
     const hasSave = !!localStorage.getItem(SAVE_KEY);
     document.getElementById("continueButton").classList.toggle("hidden", !hasSave);
